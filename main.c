@@ -64,6 +64,60 @@ void read_c_img(img pic, FILE *input)
 	}
 }
 
+// reads binary greyscale pixel values from file
+void read_b_g_img(img pic, FILE *input)
+{
+	fseek(input, 1, SEEK_CUR);
+	char **mat = pic.mat;
+	int aux;
+	for (int i = 0; i < pic.h; i++){
+		for (int j = 0; j < pic.w; j++){
+			fread(&aux, sizeof(char), 1, input);
+			mat[i][j] = aux;
+		}
+	}
+}
+
+// reads binary black-white pixel values from file
+void read_b_bw_img(img pic, FILE *input)
+{
+	fseek(input, 1, SEEK_CUR);
+	char **mat = pic.mat;
+	int aux;
+	for (int i = 0; i < pic.h; i++){
+		for (int j = 0; j < pic.w; j = j + 8){
+			fread(&aux, sizeof(char), 1, input);
+			uchar tmp = aux;
+			for (int k = 0; (k < 8) && (j + k) < pic.w; k++) {
+				if(tmp >= (1 << (7 - k))) {
+					mat[i][j + k] = 1;
+					tmp = tmp - (1 << (7 - k));
+				}
+				else
+					mat[i][j + k] = 0;
+			}
+		}
+	}
+}
+
+// reads binary color pixel values from file
+void read_b_c_img(img pic, FILE *input)
+{
+	fseek(input, 1, SEEK_CUR);
+	color **mat = pic.mat;
+	int aux[3];
+	for (int i = 0; i < pic.h; i++){
+		for (int j = 0; j < pic.w; j++){
+			fread(&aux[0], sizeof(char), 1, input);
+			fread(&aux[1], sizeof(char), 1, input);
+			fread(&aux[2], sizeof(char), 1, input);
+			mat[i][j].r = aux[0];
+			mat[i][j].g = aux[1];
+			mat[i][j].b = aux[2];
+		}
+	}
+}
+
 // loads file
 FILE *load_file(const char *file_name)
 {
@@ -102,6 +156,23 @@ img load_img(FILE *input)
 		pic.mat = alloc_img_mat(sizeof(color), pic.h, pic.w);
 		read_c_img(pic, input);
 		break;
+		case '4':
+		pic.max = 1;
+		pic.mat = alloc_img_mat(sizeof(char), pic.h, pic.w);
+		read_b_bw_img(pic, input);
+		break;
+		case '5':
+		fscanf(input, "%d", &aux);
+		pic.max = aux;
+		pic.mat = alloc_img_mat(sizeof(char), pic.h, pic.w);
+		read_b_g_img(pic, input);
+		break;
+		case '6':
+		fscanf(input, "%d", &aux);
+		pic.max = aux;
+		pic.mat = alloc_img_mat(sizeof(color), pic.h, pic.w);
+		read_b_c_img(pic, input);
+		break;
 	}
 	return pic;
 }
@@ -121,6 +192,14 @@ int main(void)
 		}
 		printf("\n");
 	}
+	// color **mat = img.mat;
+	// printf("%d %d\n", img.w, img.h);
+	// for (int i = 0; i < img.h; i++){
+	// 	for (int j = 0; j < img.w; j++){
+	// 		printf("%d %d %d ", mat[i][j].r, mat[i][j].g, mat[i][j].b);
+	// 	}
+	// 	printf("\n");
+	// }
 
 	return 0;
 }
