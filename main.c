@@ -106,7 +106,7 @@ void read_c_img(img pic, FILE *input)
 // reads raw greyscale pixel values from file
 void read_b_g_img(img pic, FILE *input)
 {
-	fseek(input, 1, SEEK_CUR);
+	//fseek(input, 1, SEEK_CUR);
 	char **map = pic.map;
 	int aux;
 	for (int i = 0; i < pic.h; i++){
@@ -120,17 +120,16 @@ void read_b_g_img(img pic, FILE *input)
 // reads raw black-white pixel values from file
 void read_b_bw_img(img pic, FILE *input)
 {
-	fseek(input, 1, SEEK_CUR);
+	//fseek(input, 1, SEEK_CUR);
 	char **map = pic.map;
-	int aux;
+	uchar aux;
 	for (int i = 0; i < pic.h; i++){
 		for (int j = 0; j < pic.w; j = j + 8){
 			fread(&aux, sizeof(char), 1, input);
-			uchar tmp = aux;
 			for (int k = 0; (k < 8) && (j + k) < pic.w; k++) {
-				if(tmp >= (1 << (7 - k))) {
+				if(aux >= (1 << (7 - k))) {
 					map[i][j + k] = 1;
-					tmp = tmp - (1 << (7 - k));
+					aux = aux - (1 << (7 - k));
 				}
 				else
 					map[i][j + k] = 0;
@@ -142,18 +141,10 @@ void read_b_bw_img(img pic, FILE *input)
 // reads raw color pixel values from file
 void read_b_c_img(img pic, FILE *input)
 {
-	fseek(input, 1, SEEK_CUR);
 	color **map = pic.map;
-	int aux[3];
 	for (int i = 0; i < pic.h; i++){
-		for (int j = 0; j < pic.w; j++){
-			fread(&aux[0], sizeof(char), 1, input);
-			fread(&aux[1], sizeof(char), 1, input);
-			fread(&aux[2], sizeof(char), 1, input);
-			map[i][j].r = aux[0];
-			map[i][j].g = aux[1];
-			map[i][j].b = aux[2];
-		}
+		for (int j = 0; j < pic.w; j++)
+			fread(&map[i][j], sizeof(color), 1, input);
 	}
 }
 
@@ -231,7 +222,7 @@ void print_nc_img(img pic, FILE *file)
 	uchar **map = pic.map;
 	for (int i = 0; i < pic.h; i++){
 		for (int j = 0; j < pic.w; j++){
-			fprintf(file, "%d", map[i][j]);
+			fprintf(file, "%d ", map[i][j]);
 		}
 	fprintf(file,"\n");
 	}
@@ -271,14 +262,18 @@ void print_b_c_img(img pic, FILE *file)
 void print_b_bw_img(img pic, FILE *file)
 {
 	uchar **map = pic.map;
-	for (int i = 0; i < pic.h; i++)
-		for (int j = 0; j < pic.w; i = i + 8) {
-			uchar aux = 0;
-			for (int k = 0; k < 8 && j + k < pic.w; k++)
-				if(map[i][j + k] == 1)
+	uchar aux = 0;
+	for (int i = 0; i < pic.h; i++){
+		for (int j = 0; j < pic.w; j = j + 8) {
+			aux = 0;
+			for (int k = 0; (k < 8) && ((j + k) < pic.w); k++) {
+				if (map[i][j + k] == 1)
 					aux = aux + (1 << (7 - k));
-			fwrite(&map[i][j], sizeof(char), 1, file);
+			}
+
+			fwrite(&aux, sizeof(char), 1, file);
 		}
+	}
 }
 
 // save image into a file
@@ -289,7 +284,7 @@ void save_image(img pic, const char *file_name)
 	fprintf(file, "%s\n", pic.m_word);
 	fprintf(file, "%d %d\n", pic.w, pic.h);
 
-	if (pic.m_word[1] != '1' || pic.m_word[1] != '4')
+	if (pic.m_word[1] != '1' && pic.m_word[1] != '4')
 		fprintf(file, "%d\n", pic.max);
 
 	switch (pic.m_word[1]) {
@@ -438,7 +433,7 @@ int main(void)
 		if (strcmp(input, "EXIT") == 0) {
 			if(pic.m_word[0] == -1){
 				printf("No image loaded");
-				break;
+				continue;
 			}
 			free_img(pic);
 			break;
