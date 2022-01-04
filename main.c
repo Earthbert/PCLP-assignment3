@@ -73,6 +73,7 @@ void free_img (img pic)
 		}
 		free(map);
 	}
+	pic.m_word[0] = -1;
 }
 
 // reads plain non-color pixel values from file
@@ -276,6 +277,40 @@ void print_b_bw_img(img pic, FILE *file)
 	}
 }
 
+// rotates square image 90 degrees to the right
+img rotate_right_img(img pic)
+{
+	if (pic.h != pic.w){
+		printf("Cannot rotate");
+		return pic;
+	}
+	if (pic.m_word[1] == '3' || pic.m_word[1] == '6') {
+		color **map = pic.map;
+		color **new_map = (color **)alloc_mat(sizeof(color), pic.h, pic.w);
+		for (int i = 0; i < pic.h; i++)
+			for (int j = 0; j < pic.w; j++) {
+				new_map[i][j] = map[pic.h - j - 1][i];
+		}
+		for (int i = 0; i < pic.h; i++)
+			free(map[i]);
+		free(map);
+		pic.map = new_map;
+	}
+	else {
+		uchar **map = pic.map;
+		uchar **new_map = (uchar **)alloc_mat(sizeof(char), pic.h, pic.w);
+		for (int i = 0; i < pic.h; i++)
+			for (int j = 0; j < pic.w; j++) {
+				new_map[i][j] = map[pic.h - j - 1][i];
+		}
+		for (int i = 0; i < pic.h; i++)
+			free(map[i]);
+		free(map);
+		pic.map = new_map;
+	}
+	return pic;
+}
+
 // save image into a file
 void save_image(img pic, const char *file_name)
 {
@@ -316,21 +351,21 @@ void save_image(img pic, const char *file_name)
 }
 
 // creates a new image from received coordinates relative to input image
-img new_image(img input_pic, int x[2], int y[2])
+img new_image(img input_pic, int x1, int y1, int x2, int y2)
 {
 	img pic;
 	memcpy(pic.m_word, input_pic.m_word, 3);
 	pic.max = input_pic.max;
 
-	if(input_pic.h < y[0] || input_pic.h < y[1])
-		printf("Invalid set of coordinates");
-	if(input_pic.w < x[0] || input_pic.w < x[1])
-		printf("Invalid set of coordinates");
+	if(input_pic.h < y1 || input_pic.h < y2)
+		printf("Invalid set of coordinates | This shouldn't happen");
+	if(input_pic.w < x1 || input_pic.w < x2)
+		printf("Invalid set of coordinates | This shouldn't happen");
 
-	if (x[0] > x[1]) swap(&x[0], &x[1]);
-	if (y[0] > y[1]) swap(&y[0], &y[1]);
-	pic.h = y[1] - y[0];
-	pic.w = x[1] - x[0];
+	if (x1 > x2) swap(&x1, &x2);
+	if (y1 > y2) swap(&y1, &y2);
+	pic.h = y2 - y1;
+	pic.w = x2 - x1;
 
 	if (pic.m_word[1] == '3' || pic.m_word[1] == '6') {
 		pic.map = alloc_mat(sizeof(color), pic.h, pic.w);
@@ -338,14 +373,14 @@ img new_image(img input_pic, int x[2], int y[2])
 		color **input_map = input_pic.map;
 		for (int i = 0; i < pic.h; i++)
 			for (int j = 0; j < pic.w; j++)
-				map[i][j] = input_map[i + y[0]][j + x[0]];
+				map[i][j] = input_map[i + y1][j + x1];
 	} else {
 		pic.map = alloc_mat(sizeof(char), pic.h, pic.w);
 		uchar **map = pic.map;
 		uchar **input_map = input_pic.map;
 		for (int i = 0; i < pic.h; i++)
 			for (int j = 0; j < pic.w; j++)
-				map[i][j] = input_map[i + y[0]][j + x[0]];
+				map[i][j] = input_map[i + y1][j + x1];
 	}
 	return pic;
 }
@@ -378,9 +413,14 @@ img load_input (img pic)
 void save_input (img pic)
 {
 	if (pic.m_word[0] == -1) printf("No image loaded");
-	char file_name[50], option[6];
+	char aux;
+	char file_name[50], option[6] = {'s'};
 	scanf("%s", file_name);
-	scanf("%s", option);
+	scanf("%c", &aux);
+	if (aux == ' ') {
+		scanf("%s", option);
+	}
+
 	if (strcmp(option, "ascii") == 0) {
 		switch (pic.m_word[1]) {
 			case '4':
@@ -411,19 +451,105 @@ void save_input (img pic)
 	printf("Saved %s\n", file_name);
 }
 
+// selects coordinates of pixel map using user input
+img select_input (img pic, img select_pic)
+{
+	int x1, y1, x2, y2; // coordinates
+	char aux[4];
+	scanf("%s", aux);
+	if (strcmp(aux, "ALL") == 0) {
+		if (pic.m_word[0] == -1){
+			printf("No image loaded\n");
+			return select_pic;
+		}
+		x1 = 0; y1 = 0;
+		x2 = pic.w; y2 = pic.h;
+		if (select_pic.m_word[0] != -1)
+			free_img(select_pic);
+		select_pic = new_image(pic, 0, 0, pic.w, pic.h);
+		printf("Selected ALL\n");
+		return select_pic;
+	}
+	x1 = atoi(aux);
+	scanf("%d %d %d", &y1, &x2, &y2);
+
+	if (pic.h < y1 || pic.h < y2 || pic.w < x1 || pic.w < x2) {
+		printf("Invalid set of coordinates\n");
+		return select_pic;
+	}
+
+	if (pic.m_word[0] == -1){
+		printf("No image loaded\n");
+		return select_pic;
+	}
+
+	if (select_pic.m_word[0] != -1)
+		free_img(select_pic);
+	select_pic = new_image(pic, x1, y1, x2, y2);
+	printf("Selected %d %d %d %d \n", x1, y1, x2, y2);
+	return select_pic;
+}
+
+// rotates image by an right angle using user input
+img rotate_input(img pic)
+{
+	int angle;
+	scanf("%d", &angle);
+	if(pic.m_word[0] == -1){
+		printf("No image loaded\n");
+		return pic;
+	}
+	if (angle % 90 != 0) {
+		printf("Unsupported rotation angle\n");
+		return pic;
+	}
+	if (pic.h != pic.w) {
+		printf("The selection must be square\n");
+		return pic;
+	}
+	printf("Rotated %d\n", angle);
+	angle = angle / 90;
+	angle = angle % 4;
+	if(angle < 0) angle = angle + 4;
+	for (int i = 0; i < angle; i++)
+		pic = rotate_right_img(pic);
+	return pic;
+}
+
 int main(void)
 {	
 	img pic; // loaded image
+	img select_pic; // selected image
 	pic.m_word[0] = -1; // is -1 when an image is not loaded
-	//int x[2], y[2]; // selection coordinates
+	select_pic.m_word[0] = -1;
 	char input[50];
 
 	while (1 == 1) {
 		scanf("%s", input);
 		if (strcmp(input, "LOAD") == 0) {
 			pic = load_input(pic);
-			// x[0] = 0; y[0] = 0;
-			// x[1] = pic.w; y[1] = pic.h;
+			if (select_pic.m_word[0] != -1)
+				free_img(select_pic);
+			select_pic = new_image(pic, 0, 0, pic.w, pic.h);
+			continue;
+		}
+		if (strcmp(input, "SELECT") == 0) {
+			select_pic = select_input(pic, select_pic);
+			continue;
+		}
+		if (strcmp(input, "CROP") == 0) {
+			if(pic.m_word[0] == -1){
+				printf("No image loaded\n");
+				continue;
+			}
+			free_img(pic);
+			pic = select_pic;
+			select_pic = new_image(pic, 0, 0, pic.w, pic.h);
+			printf("Image cropped\n");
+			continue;
+		}
+		if (strcmp(input, "ROTATE") == 0) {
+			select_pic = rotate_input(select_pic);
 			continue;
 		}
 		if (strcmp(input, "SAVE") == 0) {
@@ -432,10 +558,12 @@ int main(void)
 		}
 		if (strcmp(input, "EXIT") == 0) {
 			if(pic.m_word[0] == -1){
-				printf("No image loaded");
+				printf("No image loaded\n");
 				continue;
 			}
 			free_img(pic);
+			if(select_pic.m_word[0] != -1)
+				free_img(select_pic);
 			break;
 		}
 		printf("Invalid command\n");
