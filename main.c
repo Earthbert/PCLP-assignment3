@@ -516,6 +516,92 @@ img rotate_input(img pic)
 	return pic;
 }
 
+// applies effect given by kernal
+color **apply_effect(img pic, double kernel_mat[3][3], double div)
+{
+	color **new_map = (color **)alloc_mat(sizeof(color), pic.h, pic.w);
+	color **map = pic.map;
+
+	// it keeps the same values for pixels without enough neighbors
+	for (int i = 0; i < pic.w; i++)
+		new_map[0][i] = map[0][i];
+	for (int i = 0; i < pic.h; i++)
+		new_map[i][0] = map[i][0];
+	for (int i = 0; i < pic.w; i++)
+		new_map[pic.h - 1][i] = map[pic.h - 1][i];
+	for (int i = 0; i < pic.h; i++)
+		new_map[i][pic.w - 1] = map[i][pic.w - 1];
+
+	for (int i = 1; i < pic.h - 1; i++)
+		for (int j = 1; j < pic.w - 1; j++){
+			double r = 0;
+			double g = 0;
+			double b = 0;
+			for (int m = -1; m < 2; m++)
+				for (int n = -1; n < 2; n++){
+					r = r + map[i+n][j+m].r * kernel_mat[m+1][n + 1];
+					g = g + map[i+n][j+m].g * kernel_mat[m+1][n + 1];
+					b = b + map[i+n][j+m].b * kernel_mat[m+1][n + 1];
+				}
+			r = r / div;
+			if (r < 0) r = 0;
+			if (r > 255) r = 255;
+			g = g / div;
+			if (g < 0) g = 0;
+			if (g > 255) g = 255;
+			b = b / div;
+			if (b < 0) b = 0;
+			if (b > 255) b = 255;
+			new_map[i][j].r = r;
+			new_map[i][j].g = g;
+			new_map[i][j].b = b;
+		}
+	for (int i = 0; i < pic.h; i++){
+		free(map[i]);
+	}
+	free(map);
+	return new_map;
+}
+
+// lets user chose what effect to apply
+// kernel for effects are stored in text files with the same name
+img effects_input(img pic)
+{
+	char effect[20];
+	scanf("%s", effect);
+
+	if (pic.m_word[0] == -1) {
+		printf("No image loaded\n");
+		return pic;
+	}
+	if (pic.m_word[1] != '3' && pic.m_word[1] != '6') {
+		printf("Easy, Charlie Chaplin\n");
+		return pic;
+	}
+	double div;
+	double kernel_mat[3][3];
+	FILE *kernel_file = fopen(effect, "r");
+	if (kernel_file == NULL) {
+		printf("APPLY parameter invalid\n");
+		return pic;
+	}
+	fscanf(kernel_file, "%lf", &div);
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			fscanf(kernel_file, "%lf", &kernel_mat[i][j]);
+	fclose(kernel_file);
+
+	// printf("%d ", div);
+	// for (int i = 0; i < 3; i++)
+	// 	for ( int j = 0; j < 3; j++)
+	// 		printf("%d ", kernel_mat[i][j]);
+
+	color **map = apply_effect(pic, kernel_mat, div);
+	printf("APPLY %s done\n", effect);
+	pic.map = map;
+	return pic;
+}
+
 int main(void)
 {	
 	img pic; // loaded image
@@ -550,6 +636,10 @@ int main(void)
 		}
 		if (strcmp(input, "ROTATE") == 0) {
 			select_pic = rotate_input(select_pic);
+			continue;
+		}
+		if (strcmp(input, "APPLY") == 0) {
+			select_pic = effects_input(select_pic);
 			continue;
 		}
 		if (strcmp(input, "SAVE") == 0) {
