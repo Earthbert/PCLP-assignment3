@@ -5,15 +5,14 @@ Accepted formats:
 #pgm
 #pbm
 
-Usage:
-Command:
--LOAD <file name>
--SELECT <ALL or coordinates>
--CROP <replace image with selected one>
--SAVE <file name> <ascii>{optional for plain text}
--ROTATE <right angle> 
--APPLY <effect>
--EXIT
+## Commands:
+- LOAD \<file_name>
+- SELECT \<ALL or coordinates>
+- CROP \<replace image with selected one>. 
+- SAVE \<file name> \<ascii> {optional for plain text}. 
+- ROTATE \<right angle>    
+- APPLY \<effect>. 
+- EXIT
 
 Effects:
 Explanation:
